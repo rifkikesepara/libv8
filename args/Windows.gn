@@ -1,4 +1,5 @@
 is_debug=false
+is_clang=false
 is_component_build=false
 v8_monolithic=true
 
