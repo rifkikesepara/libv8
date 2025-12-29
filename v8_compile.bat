@@ -10,37 +10,54 @@ if not exist "%v8Dir%" (
   exit /b 1
 )
 
-set "depotToolsDir=%dir%\depot_tools"
+set "depotToolsDir=%v8Dir%\third_party\depot_tools"
 
 if not exist "%depotToolsDir%" (
-  echo Error: depot_tools directory not found at %depotToolsDir%
-  exit /b 1
+  set "depotToolsDir=%dir%\depot_tools"
 )
 
-set "DEPOT_TOOLS_DIR=%depotToolsDir%"
+set "Path=%depotToolsDir%;%Path%"
 set "DEPOT_TOOLS_WIN_TOOLCHAIN=0"
 
-set "Path=%DEPOT_TOOLS_DIR%;%Path%"
-
-for /F "delims=" %%i in ('call "%dir%\scripts\get_os.bat"') do (
-  set "os=%%i"
+set "os=%RUNNER_OS%"
+if "%os%"=="" (
+  set "os=Windows"
 )
 
-for /F "delims=" %%i in ('call "%dir%\scripts\get_arch.bat"') do (
-  set "targetCpu=%%i"
+if "%RUNNER_ARCH%"=="X86" (
+  set "targetCpu=x86"
+) else if "%RUNNER_ARCH%"=="ARM64" (
+  set "targetCpu=arm64"
+) else if "%RUNNER_ARCH%"=="X64" (
+  set "targetCpu=x64"
+) else if "%RUNNER_ARCH%"=="ARM" (
+  set "targetCpu=arm"
+) else (
+  if "%PROCESSOR_ARCHITECTURE%"=="x86" (
+    set "targetCpu=x86"
+  ) else if "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    set "targetCpu=arm64"
+  ) else (
+    set "targetCpu=x64"
+  )
 )
 
 echo Building V8 for %os% %targetCpu%
 
 setlocal EnableDelayedExpansion
 
-set "args="
+set "gnArgs="
 
-for /F "usebackq eol=# tokens=*" %%i in ("%dir%\args\%os%.gn") do (
-  set "args=!args!%%i "
+for /F "usebackq delims=" %%i in ("%dir%\args\%os%.gn") do (
+  set "line=%%i"
+
+  if not "!line!"=="" if not "!line:~0,1!"=="#" (
+    set "line=!line:"=""!"
+    set "gnArgs=!gnArgs!!line! "
+  )
 )
 
-endlocal & set "gnArgs=%args%"
+endlocal & set "gnArgs=%gnArgs%"
 
 set "ccWrapper="
 
@@ -49,15 +66,9 @@ if not errorlevel 1 (
   set "ccWrapper=sccache"
 )
 
-set "gnArgs=%gnArgs%cc_wrapper=""%ccWrapper%"""
-set "gnArgs=%gnArgs% target_cpu=""%targetCpu%"""
-set "gnArgs=%gnArgs% v8_target_cpu=""%targetCpu%"""
+set "gnArgs=%gnArgs%cc_wrapper=""%ccWrapper%"" target_cpu=""%targetCpu%"" v8_target_cpu=""%targetCpu%"""
 
 pushd "%dir%\v8"
-
-if exist out\release (
-  rmdir /s /q out\release
-)
 
 call gn gen ".\out\release" --args="%gnArgs%"
 if errorlevel 1 (

@@ -10,19 +10,30 @@ if [ ! -d "$v8_dir" ]; then
   exit 1
 fi
 
-depot_tools_dir="${dir}/depot_tools"
+depot_tools_dir="${v8_dir}/third_party/depot_tools"
 
 if [ ! -d "$depot_tools_dir" ]; then
-  echo "Error: depot_tools directory not found at ${depot_tools_dir}"
-  exit 1
+  depot_tools_dir="${dir}/depot_tools"
 fi
 
-export DEPOT_TOOLS_DIR="$depot_tools_dir"
-
-PATH="${DEPOT_TOOLS_DIR}:$PATH"
+PATH="${depot_tools_dir}:$PATH"
 export PATH
 
-os="$(sh "${dir}/scripts/get_os.sh")"
+os="$RUNNER_OS"
+
+if [ -z "$os" ]; then
+  case "$(uname -s)" in
+    Linux)
+      os="Linux"
+      ;;
+    Darwin)
+      os="macOS"
+      ;;
+    *)
+      echo "Unknown OS type"
+      exit 1
+  esac
+fi
 
 cores="2"
 
@@ -32,7 +43,24 @@ elif [ "$os" = "macOS" ]; then
   cores="$(sysctl -n hw.logicalcpu)"
 fi
 
-target_cpu="$(sh "${dir}/scripts/get_arch.sh")"
+if [ -n "$RUNNER_ARCH" ]; then
+  target_cpu="$(echo $RUNNER_ARCH | tr '[:upper:]' '[:lower:]')"
+else
+  case "$(uname -m)" in
+    x86_64)
+      target_cpu="x64"
+      ;;
+    x86|i386|i686)
+      target_cpu="x86"
+      ;;
+    arm64|aarch64)
+      target_cpu="arm64"
+      ;;
+    arm*)
+      target_cpu="arm"
+      ;;
+  esac
+fi
 
 echo "Building V8 for $os $target_cpu"
 
@@ -41,10 +69,10 @@ if command -v ccache >/dev/null 2>&1 ; then
   cc_wrapper="ccache"
 fi
 
-gn_args="$(grep -v '^#\|^$' "${dir}/args/${os}.gn" | tr -d '\r' | tr '\n' ' ')"
-gn_args="${gn_args}cc_wrapper=\"$cc_wrapper\""
-gn_args="${gn_args} target_cpu=\"$target_cpu\""
-gn_args="${gn_args} v8_target_cpu=\"$target_cpu\""
+gn_args="$(grep -v "^#" "${dir}/args/${os}.gn" | grep -v "^$")
+cc_wrapper=\"$cc_wrapper\"
+target_cpu=\"$target_cpu\"
+v8_target_cpu=\"$target_cpu\""
 
 cd "${dir}/v8"
 
