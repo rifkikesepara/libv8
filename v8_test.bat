@@ -1,5 +1,4 @@
 @echo off
-
 setlocal
 
 set "dir=%~dp0"
@@ -9,9 +8,16 @@ if not exist "%dir%\v8" (
   exit /b 1
 )
 
-call cl.exe /std:c++20 /MT /Zc:__cplusplus ^
+rem ---- match V8 build config (pointer compression ON) ----
+set "V8_DEFS=/D V8_COMPRESS_POINTERS /D V8_31BIT_SMIS_ON_64BIT_ARCH"
+
+rem Optional but commonly needed depending on how your V8 was built:
+rem set "V8_DEFS=%V8_DEFS% /D V8_ENABLE_SANDBOX"
+
+call cl.exe /nologo /std:c++20 /MT /Zc:__cplusplus ^
+  %V8_DEFS% ^
   /I"%dir%\v8" /I"%dir%\v8\include" ^
-  /Fe".\hello-world" "%dir%\v8\samples\hello-world.cc" ^
+  /Fe".\hello-world.exe" "%dir%\v8\samples\hello-world.cc" ^
   /link "%dir%\v8\out\release\obj\v8_monolith.lib" ^
   advapi32.lib dbghelp.lib winmm.lib ws2_32.lib user32.lib ole32.lib shell32.lib version.lib
 
