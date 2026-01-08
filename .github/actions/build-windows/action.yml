@@ -19,10 +19,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}:libv8:sccache:
 
-    - name: Setup Bootstrap Tools
-      shell: cmd
-      run: .\depot_tools\bootstrap\win_tools.bat
-
     - name: Setup Scoop
       uses: MinoruSekine/setup-scoop@v4
 
@@ -52,7 +48,6 @@ runs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Test V8
-      continue-on-error: true
       shell: cmd
       run: .\v8_test.bat
 

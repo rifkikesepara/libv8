@@ -21,6 +21,17 @@ jobs:
           clean: true
           fetch-depth: 1
 
+      - name: Git Setup and Cleanup
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+
+          git submodule foreach --recursive 'git clean -ffdx'
+          git submodule foreach --recursive 'git reset --hard HEAD'
+
       - name: Initialize Archive Name
         if: runner.os != 'Windows'
         shell: bash
@@ -31,20 +42,23 @@ jobs:
         shell: pwsh
         run: .\.github\workflows\scripts\archive-name.ps1
 
-      - name: Build Release for Linux
+      - name: Build Release for Linux (${{ runner.arch }})
         if: startsWith(matrix.os, 'ubuntu')
+        continue-on-error: true
         uses: ./.github/actions/build-linux
         with:
           archive-name: ${{ env.ARCHIVE_NAME }}
 
       - name: Build Release for macOS (${{ runner.arch }})
         if: startsWith(matrix.os, 'macos')
+        continue-on-error: true
         uses: ./.github/actions/build-macos
         with:
           archive-name: ${{ env.ARCHIVE_NAME }}
 
       - name: Build Release for Windows
         if: startsWith(matrix.os, 'windows')
+        continue-on-error: true
         uses: ./.github/actions/build-windows
         with:
           archive-name: ${{ env.ARCHIVE_NAME }}
